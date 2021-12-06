@@ -1,65 +1,55 @@
-from fastapi import Depends, FastAPI
-import logging
-import jwt
+from typing import List
 
-from typing import Optional
+from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy.orm import Session
 
-from fastapi.security import OAuth2PasswordBearer 
+from myothermodule import crud, models, schemas
+from myothermodule.database import SessionLocal, engine
 
-import shelve
-from pydantic import BaseModel
-from pydantic.fields import Undefined
-
-logging.basicConfig(filename="newfile.log",
-format='%(asctime)s %(message)s',
-         filemode='w')
-
-class Profile(BaseModel):
-    email: str
-    date_of_birth: str 
-    age: int
-
-s = shelve.open("test", writeback = True)
-s['auth'] = [] 
-
-
-users_data = {'santosh': 123, "tarun": 234, 'manoj': 345}
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# encoded_jwt = jwt.encode({'some': "payload"}, "secret")
-
-auth = Undefined
-
-@app.get("/")
-def read_root():
-    return ({"Hello": "Wd"})
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None):
-    return {"item_id": item_id, "q": q}
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-@app.get("/login")
-def read_item(user_name:str, password:str):
-    if user_name in users_data:
-        user = users_data[user_name]
-        if str(user) == password:
-            payload_data = {"user_name": user_name}
-            encoded_jwt = jwt.encode(payload=payload_data, key="secreat")
-            s['auth'].append(encoded_jwt)
-            return("login success", encoded_jwt)
-        else:
-            return("username and password not matched")
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return crud.create_user(db=db, user=user)
 
-    else:
-        return("login_error")
 
-@app.post("/profile")
-async def set_Item(profile: Profile):
-    if s['auth'] == []:
-        return("authentication required")
-    else:
-        return profile
+@app.get("/users/", response_model=List[schemas.User])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    users = crud.get_users(db, skip=skip, limit=limit)
+    return users
+
+
+@app.get("/users/{user_id}", response_model=schemas.User)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = crud.get_user(db, user_id=user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
+
+@app.post("/users/{user_id}/items/", response_model=schemas.Item)
+def create_item_for_user(
+    user_id: int, item: schemas.ItemCreate, db: Session = Depends(get_db)
+):
+    return crud.create_user_item(db=db, item=item, user_id=user_id)
+
+
+@app.get("/items/", response_model=List[schemas.Item])
+def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    items = crud.get_items(db, skip=skip, limit=limit)
+    return items
