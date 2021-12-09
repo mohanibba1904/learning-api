@@ -1,22 +1,17 @@
-#main
 from typing import List
-import jwt
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
-import shelve
-from library import crud,models, schemas
-from fastapi.security import OAuth2PasswordRequestForm
-
-from library.database import SessionLocal, engine
-
-
+import jwt
 from passlib.context import CryptContext
+
 from library import crud,models, schemas
 from datetime import datetime, timedelta 
 from library.database import SessionLocal, engine
 from typing import Optional
-from jose import JWTError, jwt
+# from jose import JWTError, jwt
 from fastapi.middleware.cors import CORSMiddleware
+
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -56,10 +51,10 @@ def get_db():
     finally:
         db.close()
 
+    
+
 pwd_context= CryptContext(schemes=["bcrypt"],deprecated='auto')
 
-s = shelve.open("test", writeback = True)
-s['auth'] = []        
 
 
 @app.get("/users_details/", response_model=List[schemas.User])
@@ -77,7 +72,9 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 
 
 
-# @app.post("/login")
+
+
+# @app.get("/login")
 # def read_item(user_name:str, password:str,db: Session = Depends(get_db)):
 #     users = crud.get_users(db)
 #     us = ''
@@ -97,8 +94,6 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 
 #     else:
 #         return("login error")
-
-    
 
 @app.post('/signup')
 def create_user(request:schemas.User,db: Session = Depends(get_db)):

@@ -17,3 +17,13 @@ class User(UserBase):
     
     class Config:
         orm_mode = True
+
+class Data(BaseModel):
+    user_name: str
+    password: str
+    class Config:
+        orm_mode = True
+class Token(BaseModel):
+    jwt_token:str
+    class Config:
+        orm_mode = True
